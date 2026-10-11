@@ -18,6 +18,10 @@ export const getApiUrl = (endpoint) => {
   ) {
     return endpoint;
   }
+  // Serve static assets bundled in public directly from frontend CDN
+  if (endpoint.startsWith('/artifacts/') || endpoint.startsWith('/samples/')) {
+    return endpoint;
+  }
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return `${API_BASE_URL}${cleanEndpoint}`;
 };

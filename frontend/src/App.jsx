@@ -52,7 +52,22 @@ export default function App() {
     fetchHealth();
     fetchMetrics();
     fetchHistory();
+
+    // Periodic retry to auto-connect as soon as cloud backend wakes up
+    const interval = setInterval(() => {
+      fetchHealth();
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  // When backend status transitions to healthy, fetch live data
+  useEffect(() => {
+    if (healthInfo?.status === 'healthy') {
+      fetchMetrics();
+      fetchHistory();
+    }
+  }, [healthInfo?.status]);
 
   const handleAnalysisComplete = (result) => {
     setCurrentAnalysis(result);
