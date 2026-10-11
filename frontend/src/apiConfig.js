@@ -1,11 +1,16 @@
 // CliniScan AI — Frontend API Configuration
-// Supports local development, Vercel deployments, and remote backend hosting.
+// Automatically routes to your live Render backend on Vercel deployments!
 
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+    ? 'https://cliniscan-ai.onrender.com'
+    : '')
+).replace(/\/$/, '');
 
 /**
  * Returns full URL for an API or static asset path.
- * If VITE_API_BASE_URL is set, prefixes the path with that URL.
+ * If API_BASE_URL is set, prefixes the path with that URL.
  * Otherwise returns the relative path (standard for local or proxied setups).
  */
 export const getApiUrl = (endpoint) => {
