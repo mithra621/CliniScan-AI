@@ -1,0 +1,28 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Explicit text files
+*.py text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.csv text eol=lf
+*.example text eol=lf
+
+# Critical Binary files (MUST NEVER BE MODIFIED BY GIT)
+*.pt binary
+*.pth binary
+*.onnx binary
+*.bin binary
+*.db binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.ico binary

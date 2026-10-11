@@ -1,0 +1,11 @@
+CliniScan AI - YOLO11 Evaluation Results
+=======================================================
+
+Model: /content/drive/MyDrive/CliniScan_AI/yolo11n_training/cliniscan_yolo11n/weights/best.pt
+Validation split: val
+Image size: 640
+
+Precision: 0.3890
+Recall: 0.3584
+mAP@0.5: 0.3223
+mAP@0.5:0.95: 0.1607

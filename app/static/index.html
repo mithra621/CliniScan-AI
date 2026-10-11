@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CliniScan AI — Explainable Multi-Abnormality Chest X-Ray Detection & Reporting</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            medical: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#082f49',
+            },
+            accent: {
+              500: '#06b6d4',
+              600: '#0891b2',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-medical-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-950/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Brand Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-medical-600 to-accent-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <i data-lucide="scan-line" class="w-6 h-6 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xl font-bold tracking-tight text-white">CliniScan <span class="text-accent-500">AI</span></span>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">YOLO11n + Grad-CAM</span>
+            </div>
+            <p class="text-xs text-slate-400 hidden sm:block">Explainable Multi-Abnormality Chest X-Ray Diagnostic System</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex items-center space-x-1 sm:space-x-2">
+          <button id="nav-btn-studio" onclick="switchTab('studio')" class="nav-tab active flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="stethoscope" class="w-4 h-4"></i>
+            <span>Diagnostic Studio</span>
+          </button>
+          <button id="nav-btn-analytics" onclick="switchTab('analytics')" class="nav-tab flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+            <span>Model Analytics</span>
+          </button>
+          <button id="nav-btn-dataset" onclick="switchTab('dataset')" class="nav-tab flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="database" class="w-4 h-4"></i>
+            <span>Dataset & Model</span>
+          </button>
+          <button id="nav-btn-history" onclick="switchTab('history')" class="nav-tab flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="history" class="w-4 h-4"></i>
+            <span>Scan History</span>
+          </button>
+        </nav>
+
+        <!-- Right Quick Stats Pill -->
+        <div class="hidden lg:flex items-center space-x-3 text-xs">
+          <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Model Loaded: best.pt</span>
+          </div>
+          <div class="text-slate-400">14 Classes</div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ============================================================== -->
+    <!-- TAB 1: DIAGNOSTIC STUDIO & XAI VIEWER -->
+    <!-- ============================================================== -->
+    <div id="tab-studio" class="space-y-6">
+
+      <!-- Top Banner / Indication -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-800/70 to-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 class="text-xl font-bold text-white flex items-center space-x-2">
+              <span>Chest Radiograph Multi-Abnormality Localization</span>
+              <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">640px Res</span>
+            </h1>
+            <p class="text-sm text-slate-400 mt-1">
+              Upload a DICOM/PNG/JPG radiograph or select a verified clinical sample case. YOLO11n detects abnormalities while Grad-CAM visualizes neural network saliency heatmaps.
+            </p>
+          </div>
+          
+          <!-- Sample Case Quick Selector -->
+          <div class="flex items-center space-x-2">
+            <button onclick="openSampleModal()" class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-800/40 text-sm font-semibold transition-all shadow-sm">
+              <i data-lucide="layers" class="w-4 h-4"></i>
+              <span>Select Curated Sample Case</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Studio Layout: 2 Columns (Left: Image + Views, Right: Findings + Report) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Input & Visualizations (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+
+          <!-- Upload Dropzone & Controls -->
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-lg">
+            
+            <!-- Upload Box (if no image or want to change) -->
+            <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-cyan-500/80 rounded-xl p-6 text-center transition-all cursor-pointer bg-slate-900/50 hover:bg-slate-900/80 group">
+              <input type="file" id="file-input" accept="image/*" class="hidden">
+              <div class="flex flex-col items-center justify-center space-y-2">
+                <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-cyan-950 flex items-center justify-center text-slate-400 group-hover:text-cyan-400 transition-colors">
+                  <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                </div>
+                <div>
+                  <span class="text-sm font-semibold text-slate-200 group-hover:text-cyan-400">Click to upload Chest X-Ray</span>
+                  <span class="text-xs text-slate-500 block">PNG, JPG, JPEG up to 25MB (DICOM exported)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Parameters Bar: Confidence & IoU sliders -->
+            <div class="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div class="flex justify-between text-xs text-slate-300 font-medium mb-1">
+                  <span>Confidence Threshold:</span>
+                  <span id="conf-val" class="text-cyan-400 font-bold">20%</span>
+                </div>
+                <input type="range" id="conf-slider" min="5" max="80" value="20" step="1" class="w-full accent-cyan-500 cursor-pointer">
+                <span class="text-[10px] text-slate-500 block mt-0.5">Filter detections below this score</span>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs text-slate-300 font-medium mb-1">
+                  <span>IoU NMS Threshold:</span>
+                  <span id="iou-val" class="text-cyan-400 font-bold">0.45</span>
+                </div>
+                <input type="range" id="iou-slider" min="0.1" max="0.9" value="0.45" step="0.05" class="w-full accent-cyan-500 cursor-pointer">
+                <span class="text-[10px] text-slate-500 block mt-0.5">Non-Maximum Suppression overlap threshold</span>
+              </div>
+            </div>
+
+            <!-- Patient Metadata Accordion (Optional) -->
+            <div class="mt-3">
+              <button onclick="togglePatientInputs()" class="text-xs text-slate-400 hover:text-slate-200 flex items-center space-x-1">
+                <i data-lucide="chevron-down" id="patient-chevron" class="w-3.5 h-3.5 transition-transform"></i>
+                <span>Optional Patient Details (for PDF Report)</span>
+              </button>
+              <div id="patient-inputs" class="hidden mt-2 grid grid-cols-3 gap-2">
+                <input type="text" id="patient-id-input" placeholder="Patient ID (e.g. CXR-4892)" class="text-xs bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500">
+                <input type="text" id="patient-age-input" placeholder="Age (e.g. 58)" class="text-xs bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500">
+                <select id="patient-gender-input" class="text-xs bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500">
+                  <option value="">Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Interactive Radiograph & Grad-CAM Visualizer -->
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
+            
+            <!-- View Mode Switcher -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-800">
+              <div class="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button onclick="setViewMode('superimposed')" id="view-btn-superimposed" class="view-btn active px-3 py-1 rounded-lg text-xs font-semibold">
+                  Grad-CAM Blend
+                </button>
+                <button onclick="setViewMode('annotated')" id="view-btn-annotated" class="view-btn px-3 py-1 rounded-lg text-xs font-semibold">
+                  Bounding Boxes
+                </button>
+                <button onclick="setViewMode('gradcam')" id="view-btn-gradcam" class="view-btn px-3 py-1 rounded-lg text-xs font-semibold">
+                  Heatmap Only
+                </button>
+                <button onclick="setViewMode('original')" id="view-btn-original" class="view-btn px-3 py-1 rounded-lg text-xs font-semibold">
+                  Original CXR
+                </button>
+              </div>
+
+              <!-- Quick Toggles -->
+              <div class="flex items-center space-x-3 text-xs text-slate-400">
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                  <input type="checkbox" id="toggle-boxes" checked onchange="updateCanvasOverlay()" class="accent-cyan-500 rounded">
+                  <span>Show Boxes</span>
+                </label>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                  <input type="checkbox" id="toggle-labels" checked onchange="updateCanvasOverlay()" class="accent-cyan-500 rounded">
+                  <span>Show Labels</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Viewport Display Canvas / Image -->
+            <div class="relative bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[440px] border border-slate-800/80 group">
+              
+              <!-- Placeholder State -->
+              <div id="viewer-placeholder" class="text-center p-8 space-y-3">
+                <div class="w-16 h-16 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-center mx-auto text-slate-600">
+                  <i data-lucide="image" class="w-8 h-8"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-semibold text-slate-300">No Radiograph Loaded</h3>
+                  <p class="text-xs text-slate-500 max-w-sm mt-1">Upload a chest X-ray above or choose a curated sample from the validation dataset to inspect detections and Grad-CAM activations.</p>
+                </div>
+              </div>
+
+              <!-- Loading Spinner -->
+              <div id="viewer-loading" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-30">
+                <div class="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                <div class="text-center">
+                  <p class="text-sm font-semibold text-white">Running YOLO11n Inference...</p>
+                  <p class="text-xs text-slate-400">Extracting layer 22 activations & generating Grad-CAM</p>
+                </div>
+              </div>
+
+              <!-- Main Display Image -->
+              <img id="main-display-img" class="hidden max-h-[550px] w-auto object-contain mx-auto transition-opacity" alt="Chest Radiograph Display">
+
+              <!-- Interactive Canvas Overlay for Client-side BBox Drawing & Hover -->
+              <canvas id="overlay-canvas" class="hidden absolute inset-0 w-full h-full pointer-events-none"></canvas>
+
+              <!-- Live Heatmap Opacity Slider (Float on Bottom Right) -->
+              <div id="heatmap-opacity-ctrl" class="hidden absolute bottom-3 right-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl shadow-lg flex items-center space-x-2 text-xs">
+                <span class="text-slate-400">XAI Opacity:</span>
+                <input type="range" id="xai-opacity" min="0" max="100" value="40" class="w-20 accent-cyan-500 cursor-pointer" oninput="adjustHeatmapOpacity(this.value)">
+                <span id="xai-opacity-val" class="text-cyan-400 font-mono text-[11px] w-6">40%</span>
+              </div>
+
+            </div>
+
+            <!-- Heatmap Colorbar Legend -->
+            <div id="xai-colorbar" class="hidden mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <span class="flex items-center space-x-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
+                <span>Grad-CAM Saliency:</span>
+              </span>
+              <div class="flex items-center space-x-2">
+                <span class="text-[11px] text-slate-500">Low Importance (0.0)</span>
+                <div class="w-32 h-3 rounded bg-gradient-to-r from-blue-600 via-green-500 via-yellow-400 to-red-600 border border-slate-700"></div>
+                <span class="text-[11px] text-rose-400 font-medium">Peak Activation (1.0)</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Findings Summary & Clinical Report (5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+
+          <!-- Findings Breakdown Card -->
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="check-circle-2" class="w-5 h-5 text-cyan-400"></i>
+                <h2 class="text-base font-bold text-white">Detection Findings</h2>
+              </div>
+              <span id="finding-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">0 Detected</span>
+            </div>
+
+            <!-- Detected Abnormality Badges List -->
+            <div id="findings-list" class="mt-3 space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+              <div class="text-center py-6 text-slate-500 text-xs">
+                Run an analysis to view localized abnormalities and confidence ratings.
+              </div>
+            </div>
+          </div>
+
+          <!-- Structured Clinical Report Card -->
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="file-text" class="w-5 h-5 text-medical-500"></i>
+                <h2 class="text-base font-bold text-white">Clinical Radiologist Report</h2>
+              </div>
+
+              <!-- Report Action Buttons -->
+              <div class="flex items-center space-x-2">
+                <button id="copy-report-btn" onclick="copyReportText()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all flex items-center space-x-1" title="Copy report text">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                  <span>Copy</span>
+                </button>
+                <a id="download-pdf-btn" href="#" target="_blank" class="opacity-50 pointer-events-none px-3 py-1 rounded-lg bg-gradient-to-r from-medical-600 to-accent-600 hover:from-medical-500 hover:to-accent-500 text-white text-xs font-semibold transition-all flex items-center space-x-1.5 shadow-md shadow-cyan-900/30">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>PDF Report</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Clinical Report Display Pane -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 max-h-[380px] overflow-y-auto font-mono text-xs text-slate-300 leading-relaxed space-y-3 whitespace-pre-wrap selection:bg-cyan-900 selection:text-white" id="report-text-pane">
+CLINISCAN AI — RADIOLOGICAL ANALYSIS REPORT
+============================================================
+Awaiting radiograph input.
+Upload a scan or select a sample case from above to trigger automated report generation.
+            </div>
+
+            <!-- Disclaimer Notice -->
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-rose-950/40 text-[11px] text-slate-400 flex items-start space-x-2">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-500 shrink-0 mt-0.5"></i>
+              <span><strong>Research AI System:</strong> Outputs are decision-support aids generated by YOLO11n + Grad-CAM and must be verified by a licensed radiologist.</span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 2: INTERACTIVE ANALYTICS & MODEL PERFORMANCE -->
+    <!-- ============================================================== -->
+    <div id="tab-analytics" class="hidden space-y-6">
+
+      <!-- Header -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h1 class="text-xl font-bold text-white flex items-center space-x-2">
+          <i data-lucide="activity" class="w-6 h-6 text-cyan-400"></i>
+          <span>YOLO11n Model Evaluation & Performance Analytics</span>
+        </h1>
+        <p class="text-sm text-slate-400 mt-1">
+          Official evaluation metrics computed on the 878-image validation dataset (val split) using <code class="text-cyan-400">best.pt</code> with image size 640x640.
+        </p>
+      </div>
+
+      <!-- KPI Summary Cards (4 Cards) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl shadow-lg">
+          <div class="flex items-center justify-between text-slate-400 text-xs">
+            <span>Overall Precision</span>
+            <i data-lucide="crosshair" class="w-4 h-4 text-cyan-400"></i>
+          </div>
+          <div class="text-2xl lg:text-3xl font-extrabold text-white mt-2">38.90%</div>
+          <p class="text-[11px] text-slate-500 mt-1">Precision: 0.3890 across 14 classes</p>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl shadow-lg">
+          <div class="flex items-center justify-between text-slate-400 text-xs">
+            <span>Overall Recall</span>
+            <i data-lucide="maximize-2" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="text-2xl lg:text-3xl font-extrabold text-white mt-2">35.84%</div>
+          <p class="text-[11px] text-slate-500 mt-1">Recall: 0.3584 detection sensitivity</p>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl shadow-lg">
+          <div class="flex items-center justify-between text-slate-400 text-xs">
+            <span>mAP@0.5 (mAP50)</span>
+            <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+          </div>
+          <div class="text-2xl lg:text-3xl font-extrabold text-white mt-2">32.23%</div>
+          <p class="text-[11px] text-slate-500 mt-1">mAP@0.5: 0.3223 (Primary Benchmark)</p>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl shadow-lg">
+          <div class="flex items-center justify-between text-slate-400 text-xs">
+            <span>mAP@0.5:0.95</span>
+            <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i>
+          </div>
+          <div class="text-2xl lg:text-3xl font-extrabold text-white mt-2">16.07%</div>
+          <p class="text-[11px] text-slate-500 mt-1">mAP@0.5:0.95: 0.1607 stringent IoU</p>
+        </div>
+
+      </div>
+
+      <!-- Charts Section: Per-Class AP Chart + 50 Epoch Loss Progression -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Per-Class AP Chart (7 cols) -->
+        <div class="lg:col-span-7 bg-slate-950 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-white">Per-Class Average Precision (14 Classes)</h2>
+              <p class="text-xs text-slate-400">AP@0.5 vs AP@0.5:0.95 per abnormality category</p>
+            </div>
+            <span class="text-xs font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">evaluation/per_class_metrics.txt</span>
+          </div>
+          <div class="h-80 relative">
+            <canvas id="perClassChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 50-Epoch Training Progression Chart (5 cols) -->
+        <div class="lg:col-span-5 bg-slate-950 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-white">50-Epoch Training Curve</h2>
+              <p class="text-xs text-slate-400">Box Loss, Class Loss & mAP50 convergence</p>
+            </div>
+            <span class="text-xs font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">results.csv</span>
+          </div>
+          <div class="h-80 relative">
+            <canvas id="trainingChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Training Visualizations Gallery (Confusion Matrix, PR Curve, F1 Curve) -->
+      <div class="bg-slate-950 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white">Official Training & Validation Visualizations</h2>
+          <p class="text-xs text-slate-400">Generated directly from Google Colab training run under <code class="text-cyan-400">yolo11n_training/cliniscan_yolo11n</code></p>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          
+          <div onclick="openImageModal('/training-artifacts/confusion_matrix_normalized.png', 'Normalized Confusion Matrix')" class="group cursor-pointer bg-slate-900 border border-slate-800 hover:border-cyan-500/60 rounded-xl overflow-hidden p-2 transition-all">
+            <div class="aspect-square bg-black rounded-lg overflow-hidden flex items-center justify-center">
+              <img src="/training-artifacts/confusion_matrix_normalized.png" class="object-cover w-full h-full group-hover:scale-105 transition-transform" alt="Normalized Confusion Matrix">
+            </div>
+            <p class="text-xs font-medium text-slate-300 mt-2 text-center group-hover:text-cyan-400">Confusion Matrix (Normalized)</p>
+          </div>
+
+          <div onclick="openImageModal('/training-artifacts/BoxPR_curve.png', 'Precision-Recall Curve (BoxPR)')" class="group cursor-pointer bg-slate-900 border border-slate-800 hover:border-cyan-500/60 rounded-xl overflow-hidden p-2 transition-all">
+            <div class="aspect-square bg-black rounded-lg overflow-hidden flex items-center justify-center">
+              <img src="/training-artifacts/BoxPR_curve.png" class="object-cover w-full h-full group-hover:scale-105 transition-transform" alt="Precision-Recall Curve">
+            </div>
+            <p class="text-xs font-medium text-slate-300 mt-2 text-center group-hover:text-cyan-400">Precision-Recall Curve</p>
+          </div>
+
+          <div onclick="openImageModal('/training-artifacts/BoxF1_curve.png', 'F1-Confidence Curve (BoxF1)')" class="group cursor-pointer bg-slate-900 border border-slate-800 hover:border-cyan-500/60 rounded-xl overflow-hidden p-2 transition-all">
+            <div class="aspect-square bg-black rounded-lg overflow-hidden flex items-center justify-center">
+              <img src="/training-artifacts/BoxF1_curve.png" class="object-cover w-full h-full group-hover:scale-105 transition-transform" alt="F1-Confidence Curve">
+            </div>
+            <p class="text-xs font-medium text-slate-300 mt-2 text-center group-hover:text-cyan-400">F1-Confidence Curve</p>
+          </div>
+
+          <div onclick="openImageModal('/training-artifacts/results.png', 'Training Loss & Metrics Progression')" class="group cursor-pointer bg-slate-900 border border-slate-800 hover:border-cyan-500/60 rounded-xl overflow-hidden p-2 transition-all">
+            <div class="aspect-square bg-black rounded-lg overflow-hidden flex items-center justify-center">
+              <img src="/training-artifacts/results.png" class="object-cover w-full h-full group-hover:scale-105 transition-transform" alt="Results Summary">
+            </div>
+            <p class="text-xs font-medium text-slate-300 mt-2 text-center group-hover:text-cyan-400">50-Epoch Summary Plot</p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 3: DATASET & MODEL SPECIFICATIONS -->
+    <!-- ============================================================== -->
+    <div id="tab-dataset" class="hidden space-y-6">
+
+      <!-- Header -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h1 class="text-xl font-bold text-white flex items-center space-x-2">
+          <i data-lucide="database" class="w-6 h-6 text-cyan-400"></i>
+          <span>Dataset & Model Specifications</span>
+        </h1>
+        <p class="text-sm text-slate-400 mt-1">
+          Detailed overview of dataset split, complete label matching verification, model architecture, and operational integrity.
+        </p>
+      </div>
+
+      <!-- Dataset Summary Cards (Requested in Section 5) -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        
+        <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-center shadow-lg">
+          <div class="text-xs text-slate-400 font-medium">Training Images</div>
+          <div class="text-xl font-black text-white mt-1">3,516</div>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-center shadow-lg">
+          <div class="text-xs text-slate-400 font-medium">Validation Images</div>
+          <div class="text-xl font-black text-white mt-1">878</div>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-center shadow-lg border-cyan-800/40 bg-cyan-950/20">
+          <div class="text-xs text-cyan-400 font-medium">Total Images</div>
+          <div class="text-xl font-black text-cyan-300 mt-1">4,394</div>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-center shadow-lg">
+          <div class="text-xs text-slate-400 font-medium">Training Labels</div>
+          <div class="text-xl font-black text-white mt-1">3,516</div>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-center shadow-lg">
+          <div class="text-xs text-slate-400 font-medium">Validation Labels</div>
+          <div class="text-xl font-black text-white mt-1">878</div>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-center shadow-lg">
+          <div class="text-xs text-slate-400 font-medium">Abnormality Classes</div>
+          <div class="text-xl font-black text-white mt-1">14</div>
+        </div>
+
+        <div class="bg-slate-950 border border-emerald-800/40 bg-emerald-950/20 p-3.5 rounded-xl text-center shadow-lg">
+          <div class="text-xs text-emerald-400 font-medium">Dataset Status</div>
+          <div class="text-xl font-black text-emerald-300 mt-1">Verified</div>
+        </div>
+
+      </div>
+
+      <!-- Verification Banner -->
+      <div class="bg-slate-950 border border-emerald-900/60 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-start space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-emerald-400 shrink-0">
+            <i data-lucide="shield-check" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <span>Image-Label Matching: Complete (100%)</span>
+              <span class="px-2 py-0.5 text-[11px] rounded bg-emerald-900/60 text-emerald-300">Verified Match</span>
+            </h3>
+            <p class="text-xs text-slate-300 mt-1 max-w-3xl">
+              Every training image (3,516) and validation image (878) has a confirmed corresponding annotation label in the final dataset. All 4,394 image-label pairs have undergone strict integrity validation.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Critical Scientific Distinction Alert (Requested in Section 4 & 5) -->
+      <div class="bg-gradient-to-r from-amber-950/40 via-slate-950 to-amber-950/30 border border-amber-800/60 rounded-2xl p-5 shadow-xl space-y-2">
+        <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+          <i data-lucide="info" class="w-5 h-5 shrink-0"></i>
+          <span>METHODOLOGICAL NOTE: Distinction Between Dataset Validation & Model Performance</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          The <strong>100% verification</strong> status explicitly denotes <em>annotation completeness and image-label matching</em> across the cleaned dataset (zero missing labels among 4,394 samples). It is <strong>not</strong> model detection accuracy.
+        </p>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Model detection performance is governed by statistical benchmarks: <strong>mAP@0.5 is 32.23%</strong>, with individual class APs ranging up to <strong>69.31% (Cardiomegaly)</strong> and <strong>68.98% (Aortic Enlargement)</strong>. Maintaining this scientific separation ensures transparent clinical reporting.
+        </p>
+      </div>
+
+      <!-- Model Architecture & Class Catalog Details -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Model Architecture Card -->
+        <div class="bg-slate-950 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="cpu" class="w-5 h-5 text-cyan-400"></i>
+            <h2 class="text-base font-bold text-white">YOLO11n Model Architecture</h2>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between py-1.5 border-b border-slate-800">
+              <span class="text-slate-400">Backbone / Neck:</span>
+              <span class="text-slate-200 font-mono">YOLO11 Nano (C3k2, SPPF, C2PSA)</span>
+            </div>
+            <div class="flex justify-between py-1.5 border-b border-slate-800">
+              <span class="text-slate-400">Input Resolution:</span>
+              <span class="text-slate-200 font-mono">640 x 640 x 3 px</span>
+            </div>
+            <div class="flex justify-between py-1.5 border-b border-slate-800">
+              <span class="text-slate-400">Target Layer for Grad-CAM:</span>
+              <span class="text-slate-200 font-mono">Layer 22 (C3k2 Neck output to Detect head)</span>
+            </div>
+            <div class="flex justify-between py-1.5 border-b border-slate-800">
+              <span class="text-slate-400">Trained Weights File:</span>
+              <span class="text-cyan-400 font-mono">models/best.pt (5.48 MB)</span>
+            </div>
+            <div class="flex justify-between py-1.5 border-b border-slate-800">
+              <span class="text-slate-400">Environment Variable:</span>
+              <span class="text-cyan-400 font-mono">MODEL_PATH=./models/best.pt</span>
+            </div>
+            <div class="flex justify-between py-1.5">
+              <span class="text-slate-400">Memory Loading:</span>
+              <span class="text-emerald-400 font-mono">Singleton Pattern (Loaded once on startup)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class Definitions Table -->
+        <div class="bg-slate-950 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="tag" class="w-5 h-5 text-cyan-400"></i>
+              <h2 class="text-base font-bold text-white">14 Abnormality Classes</h2>
+            </div>
+            <span class="text-xs text-slate-500">nc: 14</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 max-h-[220px] overflow-y-auto pr-1 text-xs" id="classes-catalog-grid">
+            <!-- Dynamically populated or static -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TAB 4: SCAN HISTORY & AUDIT LOG -->
+    <!-- ============================================================== -->
+    <div id="tab-history" class="hidden space-y-6">
+
+      <!-- Header with Search & Stats -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-bold text-white flex items-center space-x-2">
+            <i data-lucide="history" class="w-6 h-6 text-cyan-400"></i>
+            <span>Persistent Scan History & Reports</span>
+          </h1>
+          <p class="text-sm text-slate-400 mt-1">
+            Audit log of all analyzed chest radiographs, detected findings, and generated clinical PDFs stored in SQLite.
+          </p>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative w-full md:w-72">
+          <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-3"></i>
+          <input type="text" id="history-search-input" oninput="debounceSearchHistory(this.value)" placeholder="Search by Patient ID or Finding..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+        </div>
+      </div>
+
+      <!-- Scans Table -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3">Thumbnail</th>
+                <th class="px-4 py-3">Patient ID</th>
+                <th class="px-4 py-3">Study Date</th>
+                <th class="px-4 py-3">Detected Abnormalities</th>
+                <th class="px-4 py-3">Confidence</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body" class="divide-y divide-slate-800/60 font-mono">
+              <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-slate-500 font-sans">
+                  Loading scan records...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: SAMPLE SELECTION GALLERY -->
+  <!-- ============================================================== -->
+  <div id="sample-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <i data-lucide="layers" class="w-5 h-5 text-cyan-400"></i>
+            <span>Curated Chest X-Ray Validation Samples</span>
+          </h3>
+          <p class="text-xs text-slate-400">Choose a real case from the validated dataset for instant demonstration.</p>
+        </div>
+        <button onclick="closeSampleModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Sample Cards Grid -->
+      <div class="p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="sample-cards-container">
+        <!-- Rendered dynamically -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ARTIFACT / IMAGE PREVIEW -->
+  <!-- ============================================================== -->
+  <div id="image-modal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-2xl overflow-hidden" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between p-2 border-b border-slate-800">
+        <h4 id="image-modal-title" class="text-sm font-bold text-white"></h4>
+        <button onclick="closeImageModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-2 flex items-center justify-center">
+        <img id="image-modal-img" src="" class="max-h-[75vh] w-auto object-contain rounded-lg" alt="Preview">
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl flex items-center space-x-2.5 text-xs font-semibold text-slate-200">
+    <i data-lucide="info" id="toast-icon" class="w-4 h-4 text-cyan-400"></i>
+    <span id="toast-msg">Notification message</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>CliniScan AI — Explainable Chest X-Ray Multi-Abnormality Detection & Automated Reporting</div>
+      <div>Deep Learning Powered by Ultralytics YOLO11n + Grad-CAM Saliency</div>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

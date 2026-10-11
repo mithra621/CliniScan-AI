@@ -1,0 +1,52 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.pytest_cache/
+
+# Node.js Dependencies (never commit node_modules)
+node_modules/
+frontend/node_modules/
+dist-ssr/
+*.local
+
+# Vite / React logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime Uploads & Generated Reports (preserve folder structure via .gitkeep)
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/results/*
+!backend/results/.gitkeep
+backend/reports/*
+!backend/reports/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+data/results/*
+!data/results/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
+*.db-journal
+
+# Large Raw Image Datasets (17,000+ images / ~1GB - excluded to maintain clean GitHub repo)
+CliniScan_AI/cliniscan_dataset/images/
+CliniScan_AI/cliniscan_dataset_clean/images/
+
+# OS & Editor generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo

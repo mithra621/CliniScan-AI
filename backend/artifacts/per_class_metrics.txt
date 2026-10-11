@@ -1,0 +1,59 @@
+CLINISCAN AI - PER-CLASS METRICS
+============================================================
+
+Aortic enlargement
+  AP@0.5       : 0.6898
+  AP@0.5:0.95  : 0.4135
+
+Atelectasis
+  AP@0.5       : 0.1880
+  AP@0.5:0.95  : 0.0745
+
+Calcification
+  AP@0.5       : 0.1956
+  AP@0.5:0.95  : 0.0851
+
+Cardiomegaly
+  AP@0.5       : 0.6931
+  AP@0.5:0.95  : 0.4525
+
+Consolidation
+  AP@0.5       : 0.2793
+  AP@0.5:0.95  : 0.1382
+
+ILD
+  AP@0.5       : 0.3349
+  AP@0.5:0.95  : 0.1705
+
+Infiltration
+  AP@0.5       : 0.2636
+  AP@0.5:0.95  : 0.1154
+
+Lung Opacity
+  AP@0.5       : 0.2734
+  AP@0.5:0.95  : 0.1116
+
+Nodule/Mass
+  AP@0.5       : 0.2467
+  AP@0.5:0.95  : 0.1307
+
+Other lesion
+  AP@0.5       : 0.1142
+  AP@0.5:0.95  : 0.0438
+
+Pleural effusion
+  AP@0.5       : 0.4281
+  AP@0.5:0.95  : 0.1822
+
+Pleural thickening
+  AP@0.5       : 0.2311
+  AP@0.5:0.95  : 0.0815
+
+Pneumothorax
+  AP@0.5       : 0.2926
+  AP@0.5:0.95  : 0.1383
+
+Pulmonary fibrosis
+  AP@0.5       : 0.2820
+  AP@0.5:0.95  : 0.1114
+
