@@ -131,10 +131,19 @@ export default function AnalysisView({
     if (clinicalIndication) formData.append('indication', clinicalIndication);
 
     try {
-      const response = await fetch(getApiUrl('/api/predict'), {
-        method: 'POST',
-        body: formData,
-      });
+      let response;
+      try {
+        response = await fetch(getApiUrl('/api/predict'), {
+          method: 'POST',
+          body: formData,
+        });
+      } catch (firstErr) {
+        console.warn('Initial predict route failed, falling back directly to cloud backend:', firstErr);
+        response = await fetch('https://cliniscan-ai.onrender.com/api/predict', {
+          method: 'POST',
+          body: formData,
+        });
+      }
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
