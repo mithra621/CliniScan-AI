@@ -73,10 +73,10 @@ export default function App() {
     // Periodic retry to auto-connect as soon as cloud backend wakes up
     const interval = setInterval(() => {
       fetchHealth();
-    }, 4000);
+    }, healthInfo?.status === 'healthy' ? 30000 : 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [healthInfo?.status]);
 
   // When backend status transitions to healthy, fetch live data
   useEffect(() => {

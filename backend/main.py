@@ -5,8 +5,23 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 import cv2
+import numpy as np
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks
+# Performance optimizations for cloud containers (Render 0.1 vCPU CPU throttling)
+os.environ["YOLO_VERBOSE"] = "False"
+os.environ["ULTRALYTICS_AUTOINSTALL"] = "0"
+os.environ["ULTRALYTICS_UPDATE"] = "0"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+try:
+    import torch
+    torch.set_num_threads(1)
+    torch.set_grad_enabled(False)
+except Exception:
+    pass
+
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -54,13 +69,23 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
+# CORS configuration allowing Vercel domains, localhost, and custom deployments
+CORS_ORIGINS = [
+    "https://cliniscan-ai.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Static mounts
@@ -193,7 +218,8 @@ async def list_samples():
 # 4. Predict / Analysis Endpoint
 # ==========================================
 @app.post("/api/predict")
-async def predict_scan(
+def predict_scan(
+    background_tasks: BackgroundTasks,
     file: Optional[UploadFile] = File(None),
     sample_id: Optional[str] = Form(None),
     conf_threshold: float = Form(0.25),
@@ -205,6 +231,7 @@ async def predict_scan(
 ):
     """
     Runs multi-abnormality detection and Grad-CAM generation on an uploaded CXR or sample case.
+    Runs in FastAPI threadpool worker to preserve event loop responsiveness.
     """
     analysis_id = str(uuid.uuid4())
     saved_upload_path = None
@@ -257,6 +284,13 @@ async def predict_scan(
 
     h, w = img_bgr.shape[:2]
 
+    # Memory safeguard: limit maximum dimension to 1280px to prevent OOM kill on cloud containers
+    max_dim = max(h, w)
+    if max_dim > 1280:
+        scale_factor = 1280.0 / max_dim
+        img_bgr = cv2.resize(img_bgr, (int(w * scale_factor), int(h * scale_factor)), interpolation=cv2.INTER_AREA)
+        h, w = img_bgr.shape[:2]
+
     # 3. Model Inference (YOLO11n)
     try:
         detections, annotated_bgr = ModelService.predict(
@@ -292,9 +326,9 @@ async def predict_scan(
     superimposed_file = RESULTS_DIR / f"{analysis_id}_superimposed.jpg"
     thumb_file = RESULTS_DIR / f"{analysis_id}_thumb.jpg"
 
-    cv2.imwrite(str(annotated_file), annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
-    cv2.imwrite(str(gradcam_file), heatmap_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
-    cv2.imwrite(str(superimposed_file), superimposed_bgr, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    cv2.imwrite(str(annotated_file), annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    cv2.imwrite(str(gradcam_file), heatmap_bgr, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    cv2.imwrite(str(superimposed_file), superimposed_bgr, [cv2.IMWRITE_JPEG_QUALITY, 90])
     cv2.imwrite(str(thumb_file), thumbnail, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
     # 7. Generate Clinical Report Narrative
@@ -312,7 +346,7 @@ async def predict_scan(
         image_meta={"width": w, "height": h}
     )
 
-    # 8. Generate ReportLab PDF
+    # 8. Asynchronous ReportLab PDF generation in background
     img_refs = {
         "original": str(saved_upload_path),
         "annotated": str(annotated_file),
@@ -321,7 +355,9 @@ async def predict_scan(
     }
     pdf_filename = f"{analysis_id}_report.pdf"
     pdf_file = REPORTS_DIR / pdf_filename
-    ReportService.generate_pdf(
+
+    background_tasks.add_task(
+        ReportService.generate_pdf,
         analysis_id=analysis_id,
         clinical_data=clinical_data,
         image_paths=img_refs,
@@ -490,7 +526,38 @@ async def download_report_file(report_id: str):
         if matches:
             pdf_path = matches[0]
         else:
-            raise HTTPException(status_code=404, detail=f"PDF report for '{report_id}' not found.")
+            # Generate on the fly from history record if available
+            scan = HistoryService.get_scan_by_id(clean_id)
+            if scan:
+                patient_info = {
+                    "patient_id": scan.get("patient_id") or f"PT-{clean_id[:8].upper()}",
+                    "age": scan.get("patient_age", "N/A"),
+                    "gender": scan.get("patient_gender", "Unspecified"),
+                    "indication": scan.get("patient_notes", "Radiographic evaluation")
+                }
+                clinical_data = ReportService.generate_clinical_text(
+                    analysis_id=clean_id,
+                    patient_info=patient_info,
+                    detections=scan.get("detections", [])
+                )
+                orig_rel = scan.get("original_image_path", "").lstrip("/")
+                annot_rel = scan.get("annotated_image_path", "").lstrip("/")
+                cam_rel = scan.get("gradcam_image_path", "").lstrip("/")
+                super_rel = scan.get("superimposed_image_path", "").lstrip("/")
+                img_paths = {
+                    "original": str(BACKEND_DIR / orig_rel) if orig_rel else "",
+                    "annotated": str(BACKEND_DIR / annot_rel) if annot_rel else "",
+                    "gradcam": str(BACKEND_DIR / cam_rel) if cam_rel else "",
+                    "superimposed": str(BACKEND_DIR / super_rel) if super_rel else ""
+                }
+                ReportService.generate_pdf(
+                    analysis_id=clean_id,
+                    clinical_data=clinical_data,
+                    image_paths=img_paths,
+                    output_path=str(pdf_path)
+                )
+            else:
+                raise HTTPException(status_code=404, detail=f"PDF report for '{report_id}' not found.")
 
     return FileResponse(
         str(pdf_path),

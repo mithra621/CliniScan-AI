@@ -59,3 +59,84 @@ export const FALLBACK_PER_CLASS_METRICS = [
   { class_id: 12, class_name: 'Pneumothorax', ap50_percent: 29.26, ap50_95_percent: 13.83 },
   { class_id: 13, class_name: 'Pulmonary fibrosis', ap50_percent: 28.20, ap50_95_percent: 11.14 }
 ];
+
+export const FALLBACK_SAMPLE_CASES = [
+  {
+    id: "sample-01",
+    title: "Cardiomegaly & Pleural Effusion",
+    filename: "00150343289f317a0ad5629d5b7d9ef9.png",
+    image_url: "/samples/00150343289f317a0ad5629d5b7d9ef9.png",
+    patient_id: "CXR-VAL-0150",
+    patient_age: "68",
+    patient_gender: "Female",
+    clinical_indication: "Progressive dyspnea on exertion and bilateral lower extremity edema",
+    primary_abnormalities: ["Cardiomegaly", "Pleural effusion"],
+    recommended_conf: 0.20,
+    description: "Marked transverse cardiac enlargement with blunting of the costophrenic angles bilaterally."
+  },
+  {
+    id: "sample-02",
+    title: "Aortic Enlargement & Pulmonary Fibrosis",
+    filename: "000d68e42b71d3eac10ccc077aba07c1.png",
+    image_url: "/samples/000d68e42b71d3eac10ccc077aba07c1.png",
+    patient_id: "CXR-VAL-000D",
+    patient_age: "72",
+    patient_gender: "Male",
+    clinical_indication: "Chronic dry cough, hypertension, exertional breathlessness",
+    primary_abnormalities: ["Aortic enlargement", "Pulmonary fibrosis", "Pleural thickening"],
+    recommended_conf: 0.20,
+    description: "Prominent thoracic aortic knob with peripheral reticular fibrotic interstitial markings."
+  },
+  {
+    id: "sample-03",
+    title: "Pulmonary Nodule / Mass & Opacity",
+    filename: "0005e8e3701dfb1dd93d53e2ff537b6e.png",
+    image_url: "/samples/0005e8e3701dfb1dd93d53e2ff537b6e.png",
+    patient_id: "CXR-VAL-0005",
+    patient_age: "59",
+    patient_gender: "Male",
+    clinical_indication: "Hemoptysis evaluation and 30 pack-year smoking history",
+    primary_abnormalities: ["Nodule/Mass", "Lung Opacity", "Consolidation"],
+    recommended_conf: 0.15,
+    description: "Focal rounded soft-tissue density projecting over the pulmonary mid-zone."
+  },
+  {
+    id: "sample-04",
+    title: "Subsegmental Atelectasis & Calcification",
+    filename: "018a2fe44c3451281ec338c27ecc9c53.png",
+    image_url: "/samples/018a2fe44c3451281ec338c27ecc9c53.png",
+    patient_id: "CXR-VAL-018A",
+    patient_age: "61",
+    patient_gender: "Female",
+    clinical_indication: "Post-operative follow-up and shallow respiration",
+    primary_abnormalities: ["Atelectasis", "Calcification"],
+    recommended_conf: 0.15,
+    description: "Basilar volume reduction with focal linear densities and calcified granuloma."
+  },
+  {
+    id: "sample-05",
+    title: "Pneumothorax Case (Urgent / STAT)",
+    filename: "0e21abbef40e569be72ab0ad90544f87.png",
+    image_url: "/samples/0e21abbef40e569be72ab0ad90544f87.png",
+    patient_id: "CXR-VAL-0E21",
+    patient_age: "34",
+    patient_gender: "Male",
+    clinical_indication: "Sudden onset sharp right pleuritic chest pain and shortness of breath",
+    primary_abnormalities: ["Pneumothorax", "Pleural thickening"],
+    recommended_conf: 0.20,
+    description: "Visceral pleural line visualization with absence of peripheral lung markings in upper right hemithorax."
+  },
+  {
+    id: "sample-06",
+    title: "Bilateral Infiltration & Consolidation",
+    filename: "013893a5fa90241c65c3efcdbdd2cec1.png",
+    image_url: "/samples/013893a5fa90241c65c3efcdbdd2cec1.png",
+    patient_id: "CXR-VAL-0138",
+    patient_age: "52",
+    patient_gender: "Male",
+    clinical_indication: "Fever, chills, productive purulent sputum, and hypoxia",
+    primary_abnormalities: ["Infiltration", "Consolidation", "Lung Opacity"],
+    recommended_conf: 0.20,
+    description: "Confluent alveolar airspace opacification with air bronchograms in bilateral lower lung fields."
+  }
+];

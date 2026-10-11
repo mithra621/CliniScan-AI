@@ -20,7 +20,7 @@ import {
   Zap,
   Info
 } from 'lucide-react';
-import { getApiUrl } from '../apiConfig';
+import { getApiUrl, FALLBACK_SAMPLE_CASES } from '../apiConfig';
 
 export default function AnalysisView({ 
   currentAnalysis, 
@@ -33,7 +33,7 @@ export default function AnalysisView({
   const [previewUrl, setPreviewUrl] = useState(null);
   const [confThreshold, setConfThreshold] = useState(0.25);
   const [iouThreshold, setIouThreshold] = useState(0.45);
-  const [samples, setSamples] = useState([]);
+  const [samples, setSamples] = useState(FALLBACK_SAMPLE_CASES);
   const [selectedSampleId, setSelectedSampleId] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -55,9 +55,9 @@ export default function AnalysisView({
     fetch(getApiUrl('/api/samples'))
       .then((res) => res.json())
       .then((data) => {
-        if (data?.samples) setSamples(data.samples);
+        if (data?.samples && data.samples.length > 0) setSamples(data.samples);
       })
-      .catch((err) => console.error('Failed to load sample catalog:', err));
+      .catch((err) => console.log('Using pre-bundled sample catalog:', err));
   }, []);
 
   // Auto-activate sample if selected from Dashboard
@@ -132,22 +132,35 @@ export default function AnalysisView({
 
     try {
       let response;
-      try {
-        response = await fetch(getApiUrl('/api/predict'), {
-          method: 'POST',
-          body: formData,
-        });
-      } catch (firstErr) {
-        console.warn('Initial predict route failed, falling back directly to cloud backend:', firstErr);
-        response = await fetch('https://cliniscan-ai.onrender.com/api/predict', {
-          method: 'POST',
-          body: formData,
-        });
+      const primaryUrl = getApiUrl('/api/predict');
+      const candidateUrls = [
+        primaryUrl,
+        '/api/predict',
+        'https://cliniscan-ai.onrender.com/api/predict'
+      ].filter((url, idx, arr) => Boolean(url) && arr.indexOf(url) === idx);
+
+      let lastError = null;
+      for (const url of candidateUrls) {
+        try {
+          response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+          });
+          if (response.ok) {
+            lastError = null;
+            break;
+          } else {
+            const errJson = await response.json().catch(() => ({}));
+            lastError = new Error(errJson.detail || `Server returned error status ${response.status}`);
+          }
+        } catch (fetchErr) {
+          lastError = fetchErr;
+          console.warn(`Predict attempt to ${url} failed, trying next candidate:`, fetchErr);
+        }
       }
 
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Server returned error status ${response.status}`);
+      if (lastError || !response || !response.ok) {
+        throw (lastError || new Error('Backend inference failed. Please check connection.'));
       }
 
       const result = await response.json();
@@ -155,7 +168,12 @@ export default function AnalysisView({
       if (onAnalysisComplete) onAnalysisComplete(result);
       setViewerMode('annotated');
     } catch (err) {
-      setErrorMsg(err.message || 'Analysis failed. Please check backend connection.');
+      const msg = err.message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setErrorMsg('The cloud inference container is currently waking up or processing. Please wait 15 seconds and click Run CliniScan Diagnostic again.');
+      } else {
+        setErrorMsg(msg || 'Analysis failed. Please check backend connection.');
+      }
     } finally {
       setLoading(false);
     }
