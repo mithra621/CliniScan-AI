@@ -25,6 +25,7 @@ import {
   CartesianGrid,
   Cell
 } from 'recharts';
+import { getApiUrl } from '../apiConfig';
 
 export default function DashboardView({ 
   metricsData, 
@@ -255,7 +256,7 @@ export default function DashboardView({
               }}
             >
               <div style={{ height: '140px', background: '#000', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={demo.img} alt={demo.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={getApiUrl(demo.img)} alt={demo.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>

@@ -24,6 +24,7 @@ import {
   ResponsiveContainer, 
   CartesianGrid 
 } from 'recharts';
+import { getApiUrl } from '../apiConfig';
 
 export default function EvaluationView({ metricsData }) {
   const [selectedArtifact, setSelectedArtifact] = useState(null);
@@ -280,7 +281,7 @@ export default function EvaluationView({ metricsData }) {
               onClick={() => setSelectedArtifact(art)}
             >
               <div style={{ height: '210px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <img src={art.url} alt={art.title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={getApiUrl(art.url)} alt={art.title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(15, 23, 42, 0.75)', color: '#fff', padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <ZoomIn size={13} /> Full Screen
                 </div>
@@ -330,7 +331,7 @@ export default function EvaluationView({ metricsData }) {
               </button>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '24px', textAlign: 'center', background: '#f8fafc' }}>
-              <img src={selectedArtifact.url} alt={selectedArtifact.title} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
+              <img src={getApiUrl(selectedArtifact.url)} alt={selectedArtifact.title} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
             </div>
           </div>
         </div>

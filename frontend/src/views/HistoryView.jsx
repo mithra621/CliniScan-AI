@@ -11,6 +11,7 @@ import {
   Database,
   Calendar
 } from 'lucide-react';
+import { getApiUrl } from '../apiConfig';
 
 export default function HistoryView({ 
   historyData, 
@@ -44,7 +45,7 @@ export default function HistoryView({
     if (!window.confirm(`Are you sure you want to delete scan record ${scanId.slice(0, 8)}?`)) return;
     setDeletingId(scanId);
     try {
-      const res = await fetch(`/api/history/${scanId}`, { method: 'DELETE' });
+      const res = await fetch(getApiUrl(`/api/history/${scanId}`), { method: 'DELETE' });
       if (res.ok && refreshHistory) {
         refreshHistory();
       }
@@ -219,7 +220,7 @@ export default function HistoryView({
                             className="btn btn-outline"
                             style={{ padding: '5px 9px', fontSize: '0.75rem' }}
                             title="Download PDF"
-                            href={`/api/report/${scan.id}`}
+                            href={getApiUrl(`/api/report/${scan.id}`)}
                             target="_blank"
                             rel="noreferrer"
                           >

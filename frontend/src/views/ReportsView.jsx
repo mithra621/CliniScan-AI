@@ -13,6 +13,7 @@ import {
   FileCheck,
   Award
 } from 'lucide-react';
+import { getApiUrl } from '../apiConfig';
 
 export default function ReportsView({ currentAnalysis, setActiveTab }) {
   const [customImpression, setCustomImpression] = useState('');
@@ -39,7 +40,7 @@ export default function ReportsView({ currentAnalysis, setActiveTab }) {
     if (customNotes) formData.append('custom_notes', customNotes);
 
     try {
-      const res = await fetch('/api/report', {
+      const res = await fetch(getApiUrl('/api/report'), {
         method: 'POST',
         body: formData,
       });
@@ -228,7 +229,7 @@ export default function ReportsView({ currentAnalysis, setActiveTab }) {
                 <a
                   className="btn btn-primary"
                   style={{ width: '100%', padding: '13px', fontSize: '0.9rem' }}
-                  href={reportData?.pdf_url || `/api/report/${currentAnalysis.analysis_id}`}
+                  href={getApiUrl(reportData?.pdf_url || `/api/report/${currentAnalysis.analysis_id}`)}
                   target="_blank"
                   rel="noreferrer"
                 >

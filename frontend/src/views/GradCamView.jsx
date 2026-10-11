@@ -11,6 +11,7 @@ import {
   Cpu,
   Activity
 } from 'lucide-react';
+import { getApiUrl } from '../apiConfig';
 
 export default function GradCamView({ currentAnalysis, setActiveTab }) {
   const [blendOpacity, setBlendOpacity] = useState(45); // 0 to 100%
@@ -91,13 +92,13 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
                 <div className="viewer-stage" style={{ position: 'relative' }}>
                   {/* Base Raw CXR */}
                   <img 
-                    src={currentAnalysis.images.original_url} 
+                    src={getApiUrl(currentAnalysis.images.original_url)} 
                     alt="Original CXR" 
                     style={{ position: 'absolute', maxWidth: '100%', maxHeight: '500px' }}
                   />
                   {/* Heatmap overlay with live dynamic opacity */}
                   <img 
-                    src={currentAnalysis.images.gradcam_url} 
+                    src={getApiUrl(currentAnalysis.images.gradcam_url)} 
                     alt="Grad-CAM Heatmap" 
                     style={{ 
                       position: 'relative', 
@@ -137,7 +138,7 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
                 <div className="viewer-stage" style={{ position: 'relative', overflow: 'hidden' }}>
                   {/* Base Original Image */}
                   <img 
-                    src={currentAnalysis.images.original_url} 
+                    src={getApiUrl(currentAnalysis.images.original_url)} 
                     alt="Raw CXR" 
                     style={{ maxWidth: '100%', maxHeight: '500px' }}
                   />
@@ -153,7 +154,7 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
                     boxShadow: '4px 0 16px rgba(56, 189, 248, 0.4)'
                   }}>
                     <img 
-                      src={currentAnalysis.images.superimposed_url} 
+                      src={getApiUrl(currentAnalysis.images.superimposed_url)} 
                       alt="Superimposed" 
                       style={{ 
                         position: 'absolute',
@@ -194,19 +195,19 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
                   <div style={{ background: '#1e293b', color: '#cbd5e1', fontSize: '0.74rem', padding: '7px', fontWeight: 700 }}>
                     1. RAW RADIOGRAPH
                   </div>
-                  <img src={currentAnalysis.images.original_url} alt="Original" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  <img src={getApiUrl(currentAnalysis.images.original_url)} alt="Original" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
                 <div style={{ background: '#070d1e', borderRadius: '10px', overflow: 'hidden', textAlign: 'center', border: '1px solid #334155' }}>
                   <div style={{ background: '#1e293b', color: '#38bdf8', fontSize: '0.74rem', padding: '7px', fontWeight: 700 }}>
                     2. YOLO11n BOUNDING BOXES
                   </div>
-                  <img src={currentAnalysis.images.annotated_url} alt="Annotated" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  <img src={getApiUrl(currentAnalysis.images.annotated_url)} alt="Annotated" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
                 <div style={{ background: '#070d1e', borderRadius: '10px', overflow: 'hidden', textAlign: 'center', border: '1px solid #334155' }}>
                   <div style={{ background: '#1e293b', color: '#c084fc', fontSize: '0.74rem', padding: '7px', fontWeight: 700 }}>
                     3. GRAD-CAM (LAYER 22)
                   </div>
-                  <img src={currentAnalysis.images.gradcam_url} alt="Grad-CAM" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  <img src={getApiUrl(currentAnalysis.images.gradcam_url)} alt="Grad-CAM" style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </div>
               </div>
             )}
@@ -214,7 +215,7 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
             {displayMode === 'heatmap' && (
               <div>
                 <div className="viewer-stage">
-                  <img src={currentAnalysis.images.gradcam_url} alt="Pure Heatmap" />
+                  <img src={getApiUrl(currentAnalysis.images.gradcam_url)} alt="Pure Heatmap" />
                 </div>
                 {/* Enhanced Colormap Scale */}
                 <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
@@ -333,7 +334,7 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
           {colabExamples.map((ex) => (
             <div key={ex.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#f8fafc', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}>
               <div style={{ height: '230px', background: '#000', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={ex.path} alt={ex.title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={getApiUrl(ex.path)} alt={ex.title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               </div>
               <div style={{ padding: '16px' }}>
                 <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a', marginBottom: '4px' }}>

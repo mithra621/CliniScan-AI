@@ -9,18 +9,22 @@ import HistoryView from './views/HistoryView';
 import EvaluationView from './views/EvaluationView';
 import MethodologyView from './views/MethodologyView';
 import AboutView from './views/AboutView';
+import { getApiUrl, FALLBACK_OVERALL_METRICS, FALLBACK_PER_CLASS_METRICS } from './apiConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [healthInfo, setHealthInfo] = useState(null);
-  const [metricsData, setMetricsData] = useState(null);
+  const [metricsData, setMetricsData] = useState({
+    overall: FALLBACK_OVERALL_METRICS,
+    per_class: FALLBACK_PER_CLASS_METRICS
+  });
   const [historyData, setHistoryData] = useState(null);
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [activeSampleId, setActiveSampleId] = useState('');
 
   // Fetch initial health status
   const fetchHealth = () => {
-    fetch('/api/health')
+    fetch(getApiUrl('/api/health'))
       .then((res) => res.json())
       .then((data) => setHealthInfo(data))
       .catch((err) => console.error('Health check failed:', err));
@@ -28,15 +32,17 @@ export default function App() {
 
   // Fetch evaluation metrics
   const fetchMetrics = () => {
-    fetch('/api/metrics')
+    fetch(getApiUrl('/api/metrics'))
       .then((res) => res.json())
-      .then((data) => setMetricsData(data))
+      .then((data) => {
+        if (data && data.overall) setMetricsData(data);
+      })
       .catch((err) => console.error('Metrics fetch failed:', err));
   };
 
   // Fetch scan history
   const fetchHistory = () => {
-    fetch('/api/history')
+    fetch(getApiUrl('/api/history'))
       .then((res) => res.json())
       .then((data) => setHistoryData(data))
       .catch((err) => console.error('History fetch failed:', err));

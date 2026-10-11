@@ -20,6 +20,7 @@ import {
   Zap,
   Info
 } from 'lucide-react';
+import { getApiUrl } from '../apiConfig';
 
 export default function AnalysisView({ 
   currentAnalysis, 
@@ -51,7 +52,7 @@ export default function AnalysisView({
 
   // Fetch curated samples catalog
   useEffect(() => {
-    fetch('/api/samples')
+    fetch(getApiUrl('/api/samples'))
       .then((res) => res.json())
       .then((data) => {
         if (data?.samples) setSamples(data.samples);
@@ -130,7 +131,7 @@ export default function AnalysisView({
     if (clinicalIndication) formData.append('indication', clinicalIndication);
 
     try {
-      const response = await fetch('/api/predict', {
+      const response = await fetch(getApiUrl('/api/predict'), {
         method: 'POST',
         body: formData,
       });
@@ -155,14 +156,14 @@ export default function AnalysisView({
     if (!currentAnalysis?.images) return previewUrl;
     switch (viewerMode) {
       case 'annotated':
-        return currentAnalysis.images.annotated_url;
+        return getApiUrl(currentAnalysis.images.annotated_url);
       case 'superimposed':
-        return currentAnalysis.images.superimposed_url;
+        return getApiUrl(currentAnalysis.images.superimposed_url);
       case 'gradcam':
-        return currentAnalysis.images.gradcam_url;
+        return getApiUrl(currentAnalysis.images.gradcam_url);
       case 'original':
       default:
-        return currentAnalysis.images.original_url || previewUrl;
+        return getApiUrl(currentAnalysis.images.original_url) || previewUrl;
     }
   };
 
@@ -496,11 +497,11 @@ export default function AnalysisView({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#070d1e', padding: '14px', borderRadius: '14px', minHeight: '440px' }}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: 700, marginBottom: '6px' }}>1. RAW CHEST RADIOGRAPH</div>
-                  <img src={currentAnalysis.images.original_url} alt="Original" style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} />
+                  <img src={getApiUrl(currentAnalysis.images.original_url)} alt="Original" style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} />
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ color: '#38bdf8', fontSize: '0.72rem', fontWeight: 700, marginBottom: '6px' }}>2. YOLO11n BOUNDING BOXES</div>
-                  <img src={currentAnalysis.images.annotated_url} alt="Detections" style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} />
+                  <img src={getApiUrl(currentAnalysis.images.annotated_url)} alt="Detections" style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} />
                 </div>
               </div>
             ) : (
@@ -546,7 +547,7 @@ export default function AnalysisView({
                 <a 
                   className="btn btn-primary"
                   style={{ fontSize: '0.82rem', padding: '9px 16px' }}
-                  href={`/api/report/${currentAnalysis.analysis_id}`}
+                  href={getApiUrl(`/api/report/${currentAnalysis.analysis_id}`)}
                   target="_blank"
                   rel="noreferrer"
                 >
