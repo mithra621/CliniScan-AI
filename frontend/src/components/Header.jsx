@@ -1,7 +1,7 @@
 import React from 'react';
 import { Upload, CheckCircle2, AlertCircle, Activity, Sparkles, Cpu } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, healthInfo }) {
+export default function Header({ activeTab, setActiveTab, healthInfo, onRetryHealth }) {
   const titles = {
     dashboard: 'Dashboard Overview',
     analysis: 'Chest Radiograph Analysis & Localization',
@@ -24,7 +24,11 @@ export default function Header({ activeTab, setActiveTab, healthInfo }) {
 
       <div className="header-right">
         {/* Real-time System Connectivity Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', background: '#f8fafc', padding: '6px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+        <div 
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', background: '#f8fafc', padding: '6px 12px', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: isHealthy ? 'default' : 'pointer' }}
+          onClick={!isHealthy ? onRetryHealth : undefined}
+          title={!isHealthy ? "Click to Retry Connection" : "Backend Connected"}
+        >
           {isHealthy ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#059669', fontWeight: 700 }}>
               <span className="status-dot" style={{ width: '7px', height: '7px' }} />
@@ -32,7 +36,7 @@ export default function Header({ activeTab, setActiveTab, healthInfo }) {
             </span>
           ) : (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#dc2626', fontWeight: 700 }}>
-              <AlertCircle size={15} /> Connecting...
+              <AlertCircle size={15} /> Connecting... (Click to Retry)
             </span>
           )}
           <span style={{ color: '#cbd5e1' }}>|</span>

@@ -22,12 +22,29 @@ export default function App() {
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [activeSampleId, setActiveSampleId] = useState('');
 
-  // Fetch initial health status
-  const fetchHealth = () => {
-    fetch(getApiUrl('/api/health'))
-      .then((res) => res.json())
-      .then((data) => setHealthInfo(data))
-      .catch((err) => console.error('Health check failed:', err));
+  // Bulletproof fetch health with direct fallback to Render if relative URL fails
+  const fetchHealth = async () => {
+    const urlsToTry = [
+      getApiUrl('/api/health'),
+      'https://cliniscan-ai.onrender.com/api/health',
+      '/api/health'
+    ];
+
+    for (const url of urlsToTry) {
+      if (!url) continue;
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && (data.status === 'healthy' || data.model_loaded || data.model_available)) {
+            setHealthInfo(data);
+            return;
+          }
+        }
+      } catch (err) {
+        // try next endpoint
+      }
+    }
   };
 
   // Fetch evaluation metrics
@@ -94,6 +111,7 @@ export default function App() {
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
           healthInfo={healthInfo} 
+          onRetryHealth={fetchHealth}
         />
 
         <main className="content-area">
