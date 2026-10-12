@@ -3,7 +3,17 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 import cv2
 import numpy as np
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+
 import torch
+try:
+    torch.set_num_threads(1)
+except Exception:
+    pass
+
 from ultralytics import YOLO
 
 from backend.config import MODEL_PATH, CLASSES, CLASS_PALETTE
@@ -156,13 +166,14 @@ class ModelService:
                 print(f"[ModelService Warning] Failed to register hook on layer {capture_layer_idx}: {e}")
 
         try:
-            results = model.predict(
-                image_bgr,
-                conf=conf_threshold,
-                iou=iou_threshold,
-                imgsz=640,
-                verbose=False
-            )
+            with torch.inference_mode():
+                results = model.predict(
+                    image_bgr,
+                    conf=conf_threshold,
+                    iou=iou_threshold,
+                    imgsz=640,
+                    verbose=False
+                )
         finally:
             if hook is not None:
                 hook.remove()

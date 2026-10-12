@@ -14,6 +14,9 @@ os.environ["ULTRALYTICS_AUTOINSTALL"] = "0"
 os.environ["ULTRALYTICS_UPDATE"] = "0"
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 try:
     import torch
@@ -56,6 +59,17 @@ async def lifespan(app: FastAPI):
         if ModelService.is_model_available():
             ModelService.load_model()
             print("[CliniScan AI] YOLO11n Model loaded successfully.")
+            # Warm up PyTorch & YOLO11n engine with a dummy image to pre-compile JIT kernels
+            print("[CliniScan AI] Warming up YOLO11n inference engine...")
+            dummy_img = np.zeros((640, 640, 3), dtype=np.uint8)
+            with torch.inference_mode():
+                _ = ModelService.predict(
+                    image_bgr=dummy_img,
+                    conf_threshold=0.5,
+                    iou_threshold=0.5,
+                    capture_layer_idx=22
+                )
+            print("[CliniScan AI] YOLO11n Model warmed up successfully.")
         else:
             print(f"[CliniScan AI Warning] Checkpoint not found at {ModelService.get_model_path()}")
     except Exception as e:
@@ -285,10 +299,10 @@ def predict_scan(
 
     h, w = img_bgr.shape[:2]
 
-    # Memory safeguard: cap maximum dimension to 1024px to prevent OOM kill on cloud containers
+    # Memory & speed safeguard: cap maximum dimension to 768px for cloud containers
     max_dim = max(h, w)
-    if max_dim > 1024:
-        scale_factor = 1024.0 / max_dim
+    if max_dim > 768:
+        scale_factor = 768.0 / max_dim
         img_bgr = cv2.resize(img_bgr, (int(w * scale_factor), int(h * scale_factor)), interpolation=cv2.INTER_AREA)
         h, w = img_bgr.shape[:2]
 

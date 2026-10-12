@@ -107,6 +107,7 @@ export default function AnalysisView({
   };
 
   // Run CliniScan AI inference
+  // Run CliniScan AI inference with dual-route fallback & timeout resilience
   const handleRunAnalysis = async () => {
     if (!selectedFile && !selectedSampleId) {
       setErrorMsg('Please select a Chest X-ray image or click one of the verification cases.');
@@ -116,46 +117,78 @@ export default function AnalysisView({
     setLoading(true);
     setErrorMsg(null);
 
-    const formData = new FormData();
-    if (selectedFile) {
-      formData.append('file', selectedFile);
-    } else if (selectedSampleId) {
-      formData.append('sample_id', selectedSampleId);
+    const buildFormData = () => {
+      const fd = new FormData();
+      if (selectedFile) {
+        fd.append('file', selectedFile);
+      } else if (selectedSampleId) {
+        fd.append('sample_id', selectedSampleId);
+      }
+      fd.append('conf_threshold', confThreshold);
+      fd.append('iou_threshold', iouThreshold);
+      if (patientId) fd.append('patient_id', patientId);
+      if (patientAge) fd.append('age', patientAge);
+      if (patientGender) fd.append('gender', patientGender);
+      if (clinicalIndication) fd.append('indication', clinicalIndication);
+      return fd;
+    };
+
+    // Candidates: direct Render endpoint and Vercel rewrite proxy
+    const directUrl = getApiUrl('/api/predict') || 'https://cliniscan-ai.onrender.com/api/predict';
+    const candidateUrls = [directUrl];
+    if (directUrl !== '/api/predict') {
+      candidateUrls.push('/api/predict');
     }
 
-    formData.append('conf_threshold', confThreshold);
-    formData.append('iou_threshold', iouThreshold);
-    if (patientId) formData.append('patient_id', patientId);
-    if (patientAge) formData.append('age', patientAge);
-    if (patientGender) formData.append('gender', patientGender);
-    if (clinicalIndication) formData.append('indication', clinicalIndication);
+    let lastError = null;
+    let success = false;
 
-    try {
-      const targetUrl = getApiUrl('/api/predict') || 'https://cliniscan-ai.onrender.com/api/predict';
-      const response = await fetch(targetUrl, {
-        method: 'POST',
-        body: formData,
-      });
+    for (let i = 0; i < candidateUrls.length; i++) {
+      const targetUrl = candidateUrls[i];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Server returned error status ${response.status}`);
+      try {
+        const response = await fetch(targetUrl, {
+          method: 'POST',
+          body: buildFormData(),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          throw new Error(errJson.detail || `Server returned error status ${response.status}`);
+        }
+
+        const result = await response.json();
+        setCurrentAnalysis(result);
+        if (onAnalysisComplete) onAnalysisComplete(result);
+        setViewerMode('annotated');
+        success = true;
+        break;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        lastError = err;
+        console.warn(`[CliniScan AI] Analysis request to ${targetUrl} failed:`, err);
+        // If abort or non-network error, don't keep trying
+        if (err.name === 'AbortError') {
+          break;
+        }
       }
+    }
 
-      const result = await response.json();
-      setCurrentAnalysis(result);
-      if (onAnalysisComplete) onAnalysisComplete(result);
-      setViewerMode('annotated');
-    } catch (err) {
-      const msg = err.message || '';
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        setErrorMsg('The cloud inference container is currently waking up or busy. Please wait 15 seconds and click Run CliniScan Diagnostic again.');
+    if (!success) {
+      const msg = lastError?.message || '';
+      if (lastError?.name === 'AbortError') {
+        setErrorMsg('The inference request timed out. The cloud container is warming up; please click Run CliniScan Diagnostic again.');
+      } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setErrorMsg('The cloud inference container is currently warming up or busy. Please wait 10-15 seconds and click Run CliniScan Diagnostic again.');
       } else {
-        setErrorMsg(msg || 'Analysis failed. Please check backend connection.');
+        setErrorMsg(msg || 'Diagnostic analysis failed. Please verify connection and retry.');
       }
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const getActiveImageSrc = () => {
