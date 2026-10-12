@@ -131,36 +131,15 @@ export default function AnalysisView({
     if (clinicalIndication) formData.append('indication', clinicalIndication);
 
     try {
-      let response;
-      const primaryUrl = getApiUrl('/api/predict');
-      const candidateUrls = [
-        primaryUrl,
-        '/api/predict',
-        'https://cliniscan-ai.onrender.com/api/predict'
-      ].filter((url, idx, arr) => Boolean(url) && arr.indexOf(url) === idx);
+      const targetUrl = getApiUrl('/api/predict') || 'https://cliniscan-ai.onrender.com/api/predict';
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        body: formData,
+      });
 
-      let lastError = null;
-      for (const url of candidateUrls) {
-        try {
-          response = await fetch(url, {
-            method: 'POST',
-            body: formData,
-          });
-          if (response.ok) {
-            lastError = null;
-            break;
-          } else {
-            const errJson = await response.json().catch(() => ({}));
-            lastError = new Error(errJson.detail || `Server returned error status ${response.status}`);
-          }
-        } catch (fetchErr) {
-          lastError = fetchErr;
-          console.warn(`Predict attempt to ${url} failed, trying next candidate:`, fetchErr);
-        }
-      }
-
-      if (lastError || !response || !response.ok) {
-        throw (lastError || new Error('Backend inference failed. Please check connection.'));
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Server returned error status ${response.status}`);
       }
 
       const result = await response.json();
@@ -170,7 +149,7 @@ export default function AnalysisView({
     } catch (err) {
       const msg = err.message || '';
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        setErrorMsg('The cloud inference container is currently waking up or processing. Please wait 15 seconds and click Run CliniScan Diagnostic again.');
+        setErrorMsg('The cloud inference container is currently waking up or busy. Please wait 15 seconds and click Run CliniScan Diagnostic again.');
       } else {
         setErrorMsg(msg || 'Analysis failed. Please check backend connection.');
       }

@@ -132,22 +132,40 @@ class ModelService:
         cls,
         image_bgr: np.ndarray,
         conf_threshold: float = 0.25,
-        iou_threshold: float = 0.45
-    ) -> Tuple[List[Dict[str, Any]], np.ndarray]:
+        iou_threshold: float = 0.45,
+        capture_layer_idx: Optional[int] = 22
+    ) -> Tuple[List[Dict[str, Any]], np.ndarray, List[Any]]:
         """
         Runs YOLO11n prediction on input BGR image at 640x640 resolution.
-        Returns: (detections_list, annotated_image_bgr)
+        Optionally captures intermediate neck activations in a single forward pass.
+        Returns: (detections_list, annotated_image_bgr, layer_activations)
         """
         model = cls.get_model()
         h, w = image_bgr.shape[:2]
 
-        results = model.predict(
-            image_bgr,
-            conf=conf_threshold,
-            iou=iou_threshold,
-            imgsz=640,
-            verbose=False
-        )
+        activations = []
+        hook = None
+        if capture_layer_idx is not None:
+            def hook_fn(module, inp, out):
+                activations.append(out)
+
+            try:
+                target_layer = model.model.model[capture_layer_idx]
+                hook = target_layer.register_forward_hook(hook_fn)
+            except Exception as e:
+                print(f"[ModelService Warning] Failed to register hook on layer {capture_layer_idx}: {e}")
+
+        try:
+            results = model.predict(
+                image_bgr,
+                conf=conf_threshold,
+                iou=iou_threshold,
+                imgsz=640,
+                verbose=False
+            )
+        finally:
+            if hook is not None:
+                hook.remove()
 
         detections = []
         for box in results[0].boxes:
@@ -180,4 +198,4 @@ class ModelService:
         detections.sort(key=lambda d: d["confidence"], reverse=True)
 
         annotated_bgr = cls.draw_annotations(image_bgr, detections)
-        return detections, annotated_bgr
+        return detections, annotated_bgr, activations
