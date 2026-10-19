@@ -323,7 +323,8 @@ def predict_scan(
     try:
         cam_uint8, heatmap_bgr, superimposed_bgr = GradCAMService.generate_from_activations(
             image_bgr=img_bgr,
-            activations=activations
+            activations=activations,
+            detections=detections
         )
     except Exception as e:
         print(f"[CliniScan Warning] Grad-CAM generation error: {e}")

@@ -89,24 +89,27 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
             {/* Display Modes */}
             {displayMode === 'blend' && (
               <div>
-                <div className="viewer-stage" style={{ position: 'relative' }}>
+                <div className="viewer-stage" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '420px', background: '#0a0f1d', borderRadius: '12px', overflow: 'hidden' }}>
                   {/* Base Raw CXR */}
                   <img 
                     src={getApiUrl(currentAnalysis.images.original_url)} 
                     alt="Original CXR" 
-                    style={{ position: 'absolute', maxWidth: '100%', maxHeight: '500px' }}
+                    style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain', display: 'block' }}
                   />
-                  {/* Heatmap overlay with live dynamic opacity */}
+                  {/* Superimposed Clinical Blend overlay with live dynamic opacity */}
                   <img 
-                    src={getApiUrl(currentAnalysis.images.gradcam_url)} 
-                    alt="Grad-CAM Heatmap" 
+                    src={getApiUrl(currentAnalysis.images.superimposed_url)} 
+                    alt="Grad-CAM Clinical Blend" 
                     style={{ 
-                      position: 'relative', 
-                      maxWidth: '100%', 
-                      maxHeight: '500px',
+                      position: 'absolute', 
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
                       opacity: blendOpacity / 100,
-                      mixBlendMode: 'screen',
-                      transition: 'opacity 0.1s ease'
+                      transition: 'opacity 0.15s ease',
+                      pointerEvents: 'none'
                     }}
                   />
                 </div>
@@ -135,38 +138,40 @@ export default function GradCamView({ currentAnalysis, setActiveTab }) {
 
             {displayMode === 'slider' && (
               <div>
-                <div className="viewer-stage" style={{ position: 'relative', overflow: 'hidden' }}>
+                <div className="viewer-stage" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '420px', background: '#0a0f1d', borderRadius: '12px', overflow: 'hidden' }}>
                   {/* Base Original Image */}
                   <img 
                     src={getApiUrl(currentAnalysis.images.original_url)} 
                     alt="Raw CXR" 
-                    style={{ maxWidth: '100%', maxHeight: '500px' }}
+                    style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain', display: 'block' }}
                   />
-                  {/* Overlay Heatmap clipped by wipe percentage */}
+                  {/* Overlay Clinical Blend clipped by wipe percentage */}
+                  <img 
+                    src={getApiUrl(currentAnalysis.images.superimposed_url)} 
+                    alt="Superimposed" 
+                    style={{ 
+                      position: 'absolute', 
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      clipPath: `inset(0 ${100 - wipePercent}% 0 0)`,
+                      transition: 'none',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                  {/* Vertical Divider Line */}
                   <div style={{
                     position: 'absolute',
                     top: 0,
-                    left: 0,
-                    width: `${wipePercent}%`,
-                    height: '100%',
-                    overflow: 'hidden',
-                    borderRight: '3px solid #38bdf8',
-                    boxShadow: '4px 0 16px rgba(56, 189, 248, 0.4)'
-                  }}>
-                    <img 
-                      src={getApiUrl(currentAnalysis.images.superimposed_url)} 
-                      alt="Superimposed" 
-                      style={{ 
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        maxWidth: 'none',
-                        maxHeight: 'none',
-                        height: '100%',
-                        objectFit: 'contain'
-                      }}
-                    />
-                  </div>
+                    bottom: 0,
+                    left: `${wipePercent}%`,
+                    width: '3px',
+                    backgroundColor: '#38bdf8',
+                    boxShadow: '0 0 12px rgba(56, 189, 248, 0.8)',
+                    pointerEvents: 'none'
+                  }} />
                 </div>
 
                 <div style={{ marginTop: '18px', background: '#f8fafc', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
