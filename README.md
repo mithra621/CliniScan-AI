@@ -1,5 +1,27 @@
 # CliniScan AI: Explainable Multi-Abnormality Detection and Localization in Chest X-rays with Automated Clinical Report Generation
 
+[![Live Web Application](https://img.shields.io/badge/Live%20Demo-cliniscan--ai.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://cliniscan-ai.vercel.app)
+[![FastAPI Backend](https://img.shields.io/badge/Cloud%20API-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://cliniscan-ai.onrender.com)
+[![Swagger Docs](https://img.shields.io/badge/API%20Docs-Swagger%20UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://cliniscan-ai.onrender.com/docs)
+[![PyTorch](https://img.shields.io/badge/PyTorch-YOLO11n-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+
+---
+
+## 🌐 Live Deployments & Cloud Access
+
+CliniScan AI is deployed and publicly accessible in the cloud:
+
+| Service | Platform | Live URL |
+| :--- | :--- | :--- |
+| **Interactive Clinical Web App** | Vercel | [https://cliniscan-ai.vercel.app](https://cliniscan-ai.vercel.app) |
+| **FastAPI Inference Backend** | Render | [https://cliniscan-ai.onrender.com](https://cliniscan-ai.onrender.com) |
+| **Interactive API Documentation** | Swagger UI | [https://cliniscan-ai.onrender.com/docs](https://cliniscan-ai.onrender.com/docs) |
+| **Real-time Engine Health Check** | JSON Endpoint | [https://cliniscan-ai.onrender.com/api/health](https://cliniscan-ai.onrender.com/api/health) |
+
+> **Note on Free Tier Cloud Hosting**: The Render cloud inference container spins down after periods of inactivity. If visiting the live app for the first time, allow ~30 seconds for the cloud container to wake up.
+
+---
+
 **CliniScan AI** is an advanced, full-stack medical AI web application engineered for final-year engineering research and clinical decision-support demonstration. It integrates a fine-tuned **YOLO11n** deep learning object detection model trained on **4,394 chest radiographs** across **14 thoracic abnormality classes**, deep feature saliency **Grad-CAM (Layer 22 / C3k2)** explainability, automated structured radiological narrative synthesis, **ReportLab** clinical PDF generation, and an interactive **React + Vite** dashboard with persistent SQLite audit history.
 
 ---
