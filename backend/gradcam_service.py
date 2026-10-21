@@ -51,7 +51,8 @@ class GradCAMService:
         # 2. Targeted Saliency Synthesis
         if detections and len(detections) > 0:
             weights = np.zeros(C, dtype=np.float32)
-            density_map = np.zeros((h, w), dtype=np.float32)
+            density_map = np.zeros((H_f, W_f), dtype=np.float32)
+            y_coords, x_coords = np.ogrid[:H_f, :W_f]
 
             for det in detections:
                 box = det.get('box', [0, 0, w, h])
@@ -69,14 +70,13 @@ class GradCAMService:
                     tot_act = np.sum(pos_feat, axis=(1, 2)) + 1e-6
                     weights += conf * (box_act / tot_act)
 
-                # High-resolution anatomical Gaussian diffusion centered on pathology
-                cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
-                bw, bh = max(16.0, x2 - x1), max(16.0, y2 - y1)
-                sig_x = bw / 2.2
-                sig_y = bh / 2.2
+                # Fast anatomical Gaussian diffusion on feature grid
+                fcx = (gx1 + gx2) / 2.0
+                fcy = (gy1 + gy2) / 2.0
+                fsig_x = max(1.0, (gx2 - gx1) / 2.2)
+                fsig_y = max(1.0, (gy2 - gy1) / 2.2)
 
-                y_coords, x_coords = np.ogrid[:h, :w]
-                g = np.exp(-(((x_coords - cx) ** 2) / (2 * (sig_x ** 2)) + ((y_coords - cy) ** 2) / (2 * (sig_y ** 2))))
+                g = np.exp(-(((x_coords - fcx) ** 2) / (2 * (fsig_x ** 2)) + ((y_coords - fcy) ** 2) / (2 * (fsig_y ** 2))))
                 density_map = np.maximum(density_map, conf * g)
 
             w_sum = np.sum(weights)
@@ -92,6 +92,14 @@ class GradCAMService:
                 neural_cam = (neural_cam - nc_min) / (nc_max - nc_min)
             else:
                 neural_cam = np.zeros_like(neural_cam)
+
+            # Resize feature-grid density map to full image resolution
+            density_map = cv2.resize(density_map, (w, h), interpolation=cv2.INTER_CUBIC)
+            dm_min, dm_max = float(density_map.min()), float(density_map.max())
+            if dm_max > dm_min:
+                density_map = (density_map - dm_min) / (dm_max - dm_min)
+            else:
+                density_map = np.zeros_like(density_map)
 
             fused_saliency = 0.55 * neural_cam + 0.45 * density_map
         else:

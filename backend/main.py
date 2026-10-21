@@ -2,6 +2,7 @@ import os
 import gc
 import uuid
 import shutil
+import base64
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
@@ -347,6 +348,21 @@ def predict_scan(
     cv2.imwrite(str(superimposed_file), superimposed_bgr, [cv2.IMWRITE_JPEG_QUALITY, 90])
     cv2.imwrite(str(thumb_file), thumbnail, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
+    # 6b. Base64 encoding for instantaneous, zero-latency frontend image display
+    # (Completely eliminates broken image icons due to ephemeral disk restarts or slow cross-origin static fetches)
+    def to_b64_jpeg(img_arr, quality=82):
+        if img_arr is None:
+            return None
+        success, buf = cv2.imencode(".jpg", img_arr, [cv2.IMWRITE_JPEG_QUALITY, quality])
+        if success:
+            return f"data:image/jpeg;base64,{base64.b64encode(buf).decode('ascii')}"
+        return None
+
+    orig_b64 = to_b64_jpeg(img_bgr, quality=80)
+    ann_b64 = to_b64_jpeg(annotated_bgr, quality=85)
+    heat_b64 = to_b64_jpeg(heatmap_bgr, quality=80)
+    sup_b64 = to_b64_jpeg(superimposed_bgr, quality=85)
+
     # 7. Generate Clinical Report Narrative
     patient_info = {
         "patient_id": patient_id or f"PT-{analysis_id[:8].upper()}",
@@ -414,7 +430,11 @@ def predict_scan(
             "annotated_url": f"/results/{annotated_file.name}",
             "gradcam_url": f"/results/{gradcam_file.name}",
             "superimposed_url": f"/results/{superimposed_file.name}",
-            "thumbnail_url": f"/results/{thumb_file.name}"
+            "thumbnail_url": f"/results/{thumb_file.name}",
+            "original_b64": orig_b64,
+            "annotated_b64": ann_b64,
+            "gradcam_b64": heat_b64,
+            "superimposed_b64": sup_b64
         },
         "report": {
             "report_id": clinical_data["report_id"],

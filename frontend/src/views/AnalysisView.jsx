@@ -195,14 +195,21 @@ export default function AnalysisView({
     if (!currentAnalysis?.images) return previewUrl;
     switch (viewerMode) {
       case 'annotated':
-        return getApiUrl(currentAnalysis.images.annotated_url);
+        return currentAnalysis.images.annotated_b64 || (currentAnalysis.images.annotated_url ? getApiUrl(currentAnalysis.images.annotated_url) : null) || previewUrl;
       case 'superimposed':
-        return getApiUrl(currentAnalysis.images.superimposed_url);
+        return currentAnalysis.images.superimposed_b64 || (currentAnalysis.images.superimposed_url ? getApiUrl(currentAnalysis.images.superimposed_url) : null) || previewUrl;
       case 'gradcam':
-        return getApiUrl(currentAnalysis.images.gradcam_url);
+        return currentAnalysis.images.gradcam_b64 || (currentAnalysis.images.gradcam_url ? getApiUrl(currentAnalysis.images.gradcam_url) : null) || previewUrl;
       case 'original':
       default:
-        return getApiUrl(currentAnalysis.images.original_url) || previewUrl;
+        return currentAnalysis.images.original_b64 || previewUrl || (currentAnalysis.images.original_url ? getApiUrl(currentAnalysis.images.original_url) : null);
+    }
+  };
+
+  const handleImageError = (e) => {
+    console.warn('[CliniScan Viewport] Image source load failed, falling back:', e.target.src);
+    if (previewUrl && e.target.src !== previewUrl) {
+      e.target.src = previewUrl;
     }
   };
 
@@ -536,11 +543,21 @@ export default function AnalysisView({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#070d1e', padding: '14px', borderRadius: '14px', minHeight: '440px' }}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: 700, marginBottom: '6px' }}>1. RAW CHEST RADIOGRAPH</div>
-                  <img src={getApiUrl(currentAnalysis.images.original_url)} alt="Original" style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} />
+                  <img 
+                    src={currentAnalysis.images.original_b64 || previewUrl || (currentAnalysis.images.original_url ? getApiUrl(currentAnalysis.images.original_url) : '')} 
+                    alt="Original" 
+                    onError={handleImageError}
+                    style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} 
+                  />
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ color: '#38bdf8', fontSize: '0.72rem', fontWeight: 700, marginBottom: '6px' }}>2. YOLO11n BOUNDING BOXES</div>
-                  <img src={getApiUrl(currentAnalysis.images.annotated_url)} alt="Detections" style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} />
+                  <img 
+                    src={currentAnalysis.images.annotated_b64 || (currentAnalysis.images.annotated_url ? getApiUrl(currentAnalysis.images.annotated_url) : '') || previewUrl} 
+                    alt="Detections" 
+                    onError={handleImageError}
+                    style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }} 
+                  />
                 </div>
               </div>
             ) : (
@@ -550,6 +567,7 @@ export default function AnalysisView({
                     src={getActiveImageSrc()} 
                     alt="Radiograph View" 
                     key={getActiveImageSrc()}
+                    onError={handleImageError}
                   />
                 ) : (
                   <div style={{ textAlign: 'center', color: '#64748b', padding: '60px 20px' }}>
@@ -711,7 +729,12 @@ export default function AnalysisView({
             </button>
           </div>
           <div style={{ maxWidth: '1000px', maxHeight: '82vh', overflow: 'hidden', borderRadius: '12px', border: '1px solid #334155' }}>
-            <img src={getActiveImageSrc()} alt="Full Radiograph" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            <img 
+              src={getActiveImageSrc()} 
+              alt="Full Radiograph" 
+              onError={handleImageError}
+              style={{ width: '100%', height: 'auto', display: 'block' }} 
+            />
           </div>
         </div>
       )}
