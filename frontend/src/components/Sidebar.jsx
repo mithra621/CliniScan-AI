@@ -11,7 +11,7 @@ import {
   Activity
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, healthInfo }) {
+export default function Sidebar({ activeTab, setActiveTab, healthInfo, connectionStatus }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'analysis', label: 'X-ray Analysis', icon: ScanSearch },
@@ -23,7 +23,8 @@ export default function Sidebar({ activeTab, setActiveTab, healthInfo }) {
     { id: 'about', label: 'About & Disclaimer', icon: Info },
   ];
 
-  const isModelReady = healthInfo?.model_loaded || healthInfo?.model_available;
+  const isModelReady = connectionStatus === 'connected' || healthInfo?.model_loaded || healthInfo?.model_available;
+  const isWakingUp = connectionStatus === 'waking_up';
 
   return (
     <aside className="sidebar">
@@ -61,10 +62,10 @@ export default function Sidebar({ activeTab, setActiveTab, healthInfo }) {
 
       <div className="sidebar-footer">
         <div className="model-status-chip">
-          <div className={`status-dot ${isModelReady ? '' : 'offline'}`} />
+          <div className={`status-dot ${isModelReady ? '' : (isWakingUp ? 'waking' : 'offline')}`} style={isWakingUp ? { background: '#f59e0b' } : undefined} />
           <div>
             <div style={{ fontWeight: 600 }}>
-              {isModelReady ? 'YOLO11n Active' : 'Model Offline'}
+              {isModelReady ? 'YOLO11n Active' : (isWakingUp ? 'Waking Up (~45s)...' : 'Model Offline')}
             </div>
             <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
               14 Pathologies • PyTorch

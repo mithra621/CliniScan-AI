@@ -1,16 +1,27 @@
-// CliniScan AI — Frontend API Configuration
-// Automatically routes to your live Render backend on Vercel deployments!
+// CliniScan AI — Dynamic Resilient API Configuration
+// Automatically routes to your live Render backend on Vercel deployments
+// and provides transparent fallback for local development.
 
-export const API_BASE_URL = (
+export const CLOUD_RENDER_URL = 'https://cliniscan-ai.onrender.com';
+
+let currentBaseUrl = (
   import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
-    ? 'https://cliniscan-ai.onrender.com'
+    ? CLOUD_RENDER_URL
     : '')
 ).replace(/\/$/, '');
 
+export const setApiBaseUrl = (url) => {
+  currentBaseUrl = (url || '').replace(/\/$/, '');
+};
+
+export const getApiBaseUrl = () => currentBaseUrl;
+
+export const API_BASE_URL = currentBaseUrl;
+
 /**
  * Returns full URL for an API or static asset path.
- * If API_BASE_URL is set, prefixes the path with that URL.
+ * If dynamic base URL is set, prefixes the path with that URL.
  * Otherwise returns the relative path (standard for local or proxied setups).
  */
 export const getApiUrl = (endpoint) => {
@@ -28,7 +39,7 @@ export const getApiUrl = (endpoint) => {
     return endpoint;
   }
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${API_BASE_URL}${cleanEndpoint}`;
+  return `${currentBaseUrl}${cleanEndpoint}`;
 };
 
 // Verified validation metrics constants (loaded if backend is waking up or offline)

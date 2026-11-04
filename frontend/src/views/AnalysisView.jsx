@@ -27,7 +27,9 @@ export default function AnalysisView({
   setCurrentAnalysis, 
   setActiveTab, 
   onAnalysisComplete,
-  initialSampleId
+  initialSampleId,
+  healthInfo,
+  connectionStatus
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -133,12 +135,13 @@ export default function AnalysisView({
       return fd;
     };
 
-    // Candidates: direct Render endpoint and Vercel rewrite proxy
-    const directUrl = getApiUrl('/api/predict') || 'https://cliniscan-ai.onrender.com/api/predict';
-    const candidateUrls = [directUrl];
-    if (directUrl !== '/api/predict') {
-      candidateUrls.push('/api/predict');
-    }
+    // Candidates: dynamic API URL, direct Render cloud endpoint, and proxy
+    const directUrl = getApiUrl('/api/predict');
+    const cloudUrl = 'https://cliniscan-ai.onrender.com/api/predict';
+    const candidateUrls = [];
+    if (directUrl) candidateUrls.push(directUrl);
+    if (!candidateUrls.includes(cloudUrl)) candidateUrls.push(cloudUrl);
+    if (!candidateUrls.includes('/api/predict')) candidateUrls.push('/api/predict');
 
     let lastError = null;
     let success = false;
@@ -223,6 +226,15 @@ export default function AnalysisView({
 
   return (
     <div className="animate-fade-in">
+      {connectionStatus === 'waking_up' && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: '12px 18px', borderRadius: '10px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px', fontSize: '0.85rem', boxShadow: '0 2px 6px rgba(245, 158, 11, 0.08)' }}>
+          <RefreshCw size={17} className="animate-spin-slow" />
+          <span>
+            <strong>Cloud Engine Initializing:</strong> The Render container is spinning up from standby (~45-60s on free tier). You can pick a sample now; diagnostics will run as soon as initialization completes.
+          </span>
+        </div>
+      )}
+
       {errorMsg && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '14px 18px', borderRadius: '10px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '22px', fontSize: '0.86rem', boxShadow: '0 2px 8px rgba(185, 28, 28, 0.08)' }}>
           <AlertCircle size={18} />
@@ -458,6 +470,10 @@ export default function AnalysisView({
               {loading ? (
                 <>
                   <RefreshCw size={18} className="animate-spin-slow" /> Running YOLO11n & Grad-CAM...
+                </>
+              ) : connectionStatus === 'waking_up' ? (
+                <>
+                  <RefreshCw size={18} className="animate-spin-slow" /> Engine Initializing... Click to Run
                 </>
               ) : (
                 <>

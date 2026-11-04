@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardView from './views/DashboardView';
@@ -9,11 +9,21 @@ import HistoryView from './views/HistoryView';
 import EvaluationView from './views/EvaluationView';
 import MethodologyView from './views/MethodologyView';
 import AboutView from './views/AboutView';
-import { getApiUrl, FALLBACK_OVERALL_METRICS, FALLBACK_PER_CLASS_METRICS } from './apiConfig';
+import { 
+  getApiUrl, 
+  getApiBaseUrl, 
+  setApiBaseUrl, 
+  CLOUD_RENDER_URL, 
+  FALLBACK_OVERALL_METRICS, 
+  FALLBACK_PER_CLASS_METRICS 
+} from './apiConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [healthInfo, setHealthInfo] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('connecting'); // 'connecting' | 'waking_up' | 'connected' | 'offline'
+  const isFetchingRef = useRef(false);
+
   const [metricsData, setMetricsData] = useState({
     overall: FALLBACK_OVERALL_METRICS,
     per_class: FALLBACK_PER_CLASS_METRICS
@@ -22,29 +32,64 @@ export default function App() {
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const [activeSampleId, setActiveSampleId] = useState('');
 
-  // Bulletproof fetch health with direct fallback to Render if relative URL fails
+  // Bulletproof health fetch with cold-boot detection and no request stacking
   const fetchHealth = async () => {
-    const urlsToTry = [
-      getApiUrl('/api/health'),
-      'https://cliniscan-ai.onrender.com/api/health',
-      '/api/health'
-    ];
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
-    for (const url of urlsToTry) {
-      if (!url) continue;
+    // If health request takes > 2.5s, signal that cloud container is cold-starting
+    const wakeTimer = setTimeout(() => {
+      setConnectionStatus((prev) => (prev === 'connected' ? 'connected' : 'waking_up'));
+    }, 2500);
+
+    const endpointsToTry = [];
+    const currentBase = getApiBaseUrl();
+    const defaultEndpoint = getApiUrl('/api/health');
+
+    endpointsToTry.push({ url: defaultEndpoint, base: currentBase });
+    if (defaultEndpoint !== `${CLOUD_RENDER_URL}/api/health`) {
+      endpointsToTry.push({ url: `${CLOUD_RENDER_URL}/api/health`, base: CLOUD_RENDER_URL });
+    }
+    if (!currentBase && defaultEndpoint !== '/api/health') {
+      endpointsToTry.push({ url: '/api/health', base: '' });
+    }
+
+    let connected = false;
+
+    for (const target of endpointsToTry) {
+      if (!target.url) continue;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 16000);
+
       try {
-        const res = await fetch(url, { cache: 'no-store' });
+        const res = await fetch(target.url, { 
+          cache: 'no-store',
+          signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           const data = await res.json();
           if (data && (data.status === 'healthy' || data.model_loaded || data.model_available)) {
+            clearTimeout(wakeTimer);
+            setApiBaseUrl(target.base);
             setHealthInfo(data);
-            return;
+            setConnectionStatus('connected');
+            connected = true;
+            break;
           }
         }
       } catch (err) {
-        // try next endpoint
+        clearTimeout(timeoutId);
+        // Fallback to next endpoint candidates
       }
     }
+
+    clearTimeout(wakeTimer);
+    if (!connected && !healthInfo) {
+      setConnectionStatus((prev) => (prev === 'waking_up' ? 'waking_up' : 'offline'));
+    }
+    isFetchingRef.current = false;
   };
 
   // Fetch evaluation metrics
@@ -54,7 +99,7 @@ export default function App() {
       .then((data) => {
         if (data && data.overall) setMetricsData(data);
       })
-      .catch((err) => console.error('Metrics fetch failed:', err));
+      .catch((err) => console.warn('[CliniScan] Metrics fetch using local cache:', err));
   };
 
   // Fetch scan history
@@ -62,7 +107,7 @@ export default function App() {
     fetch(getApiUrl('/api/history'))
       .then((res) => res.json())
       .then((data) => setHistoryData(data))
-      .catch((err) => console.error('History fetch failed:', err));
+      .catch((err) => console.warn('[CliniScan] History fetch will retry on connect:', err));
   };
 
   useEffect(() => {
@@ -70,21 +115,23 @@ export default function App() {
     fetchMetrics();
     fetchHistory();
 
-    // Periodic retry to auto-connect as soon as cloud backend wakes up
+    // Adaptive keep-alive ping:
+    // When connected: ping every 8 mins to keep Render from sleeping while tab is open.
+    // When connecting / waking up / offline: retry every 7 seconds.
     const interval = setInterval(() => {
       fetchHealth();
-    }, healthInfo?.status === 'healthy' ? 30000 : 5000);
+    }, connectionStatus === 'connected' ? 480000 : 7000);
 
     return () => clearInterval(interval);
-  }, [healthInfo?.status]);
+  }, [connectionStatus]);
 
-  // When backend status transitions to healthy, fetch live data
+  // When backend status transitions to healthy, fetch live metrics and audit records
   useEffect(() => {
-    if (healthInfo?.status === 'healthy') {
+    if (connectionStatus === 'connected') {
       fetchMetrics();
       fetchHistory();
     }
-  }, [healthInfo?.status]);
+  }, [connectionStatus]);
 
   const handleAnalysisComplete = (result) => {
     setCurrentAnalysis(result);
@@ -102,7 +149,8 @@ export default function App() {
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        healthInfo={healthInfo} 
+        healthInfo={healthInfo}
+        connectionStatus={connectionStatus}
       />
 
       {/* Main App Stage */}
@@ -111,6 +159,7 @@ export default function App() {
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
           healthInfo={healthInfo} 
+          connectionStatus={connectionStatus}
           onRetryHealth={fetchHealth}
         />
 
@@ -120,6 +169,7 @@ export default function App() {
               metricsData={metricsData} 
               historyData={historyData} 
               healthInfo={healthInfo}
+              connectionStatus={connectionStatus}
               setActiveTab={setActiveTab}
               onSelectSample={handleSelectSampleFromDashboard}
             />
@@ -130,6 +180,8 @@ export default function App() {
               currentAnalysis={currentAnalysis}
               setCurrentAnalysis={setCurrentAnalysis}
               setActiveTab={setActiveTab}
+              healthInfo={healthInfo}
+              connectionStatus={connectionStatus}
               onAnalysisComplete={handleAnalysisComplete}
               initialSampleId={activeSampleId}
             />
